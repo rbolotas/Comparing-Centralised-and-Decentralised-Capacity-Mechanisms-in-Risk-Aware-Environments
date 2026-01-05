@@ -1,0 +1,21 @@
+Parameter;Scaling;remarks
+# Risk appetite scenarios - systematic sweep for both generators and consumers
+# β_co and β_gc sweep from 0.1 to 0.9 with 0.2 steps (reference 0.5), γ kept at 0.5
+
+
+# Combined parameter scenarios (realistic market conditions) get some load shedding
+MULTI:RiskMetrics β_gc,RiskMetrics β_co;0.2;market-wide high risk aversion β 0.1
+MULTI:RiskMetrics β_gc,RiskMetrics β_co;0.6;market-wide medium-high risk aversion β 0.3
+MULTI:RiskMetrics β_gc,RiskMetrics β_co;0.8;market-wide medium-low risk aversion β 0.7
+MULTI:RiskMetrics β_gc,RiskMetrics β_co;0.9;market-wide low risk aversion β 0.9
+
+#scrap
+
+
+# Strike price for reliability options (decentral CM)
+RO_Strike λ_scr;1.25;strike price +25%
+RO_Strike λ_scr;1.5;strike price +50%
+RO_Strike λ_scr;2;strike price +100% 
+
+
+

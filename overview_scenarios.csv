@@ -1,0 +1,8 @@
+scen_number;ParameterA;Sens_analysis;remarks
+1;1;NO;Energy only market with inelastic consumer demand (EOM Inelastic)
+2;2;YES;Energy only market with elastic demand (EOM )
+3;3;YES;Energy only market with risk-aware agents (CVAR) and elastic demand (EOM +CVAR)
+4;4;YES;Energy only market with elastic demand and Centralised Capacity Market (EOM + CM)
+5;5;YES;Energy only market with CVaR, elastic demand, and Centralised Capacity Market (EOM + CM + CVAR)
+6;6;YES;Energy only market with elastic demand and Decentralised Capacity Market (Reliability Options) (EOM + RO)
+7;7;YES;Energy only market with CVaR, elastic demand, and Reliability Options (EOM + RO + CVAR)
