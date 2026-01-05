@@ -1,0 +1,155 @@
+General: 
+  nTimesteps: 288 # number of timesteps 
+  totConsumers: 1000000 # 1M  consumers
+  r: 0.05 # discount rate
+
+# NEW: File configuration section
+Files:
+    weather_timeseries: "ts_RES_AF_12d.csv"   # Weather data
+    demand_timeseries: "ts_demand_12d.csv"    # Demand data
+  
+ADMM:
+  rho_EOM: 0.005   #initial penalty parameter
+  rho_cCM: 0.05   #initial penalty parameter
+  rho_dCM: 0.003   #initial penalty parameter (0.001 too weak, 0.01 explodes, trying middle)
+  α_EOM:   1  #  = ÷200  (energy market needs strong damping) (divider in ADMM.jl price update)
+  α_cCM:   1  #  = ÷10   (capacity markets can move faster) (divider in ADMM.jl price update)
+  α_dCM:   0.3  # Strong damping (30%) to prevent price oscillations
+  max_iter: 3500
+   # maximum number of iterations
+  epsilon: 0.020 #(15 MWh) stopping criterion - tolerance on "accuracy" with which the coupling constraints are satisfied. Applied to dual and primal residuals.
+  CircularBufferSize: 10 # number of iterations for which data will be retained, should be at least 2 and less than max_iter
+
+EOM: 
+  parameter_A: 1 # dummy, not used 
+  
+cCM:
+    parameter_A: 1 # dummy, not used 
+    reserve_margin: 0.0      # 0%
+
+dCM:
+  λ_EOM_scr: 0.25 # Strike price for reliability options (m€/GWh) - set above Peak MC to allow participation
+
+Consumers: # Set of representative consumers
+  LV_LOW:
+   display_name: "LV Low"
+   Share: 0.30 # Share of consumers in overall consumer mix
+   PV_cap: 0.0000015 # GWp (1.5 kWp)
+   #PV_cap: 0
+   D: "LV_LOW" # Demand timeseries that needs to be picked up
+   PV_AF: "PV" # CHANGED: Updated to match weather file column name
+   λ_EOM_cap: 2.5   # Price cap (M€/GWh) - 
+   D_cap_ratio: 0.75  # Can reduce to 70% of reference demand (30% reduction) - most elastic 
+   
+  LV_MED: 
+   display_name: "LV Medium"
+   Share: 0.30  # Share of consumers in overall consumer mix
+   PV_cap: 0.000005 # GWp (5 kWp)
+   #PV_cap: 0
+   D: "LV_MED" # Timeseries that needs to be picked up
+   PV_AF: "PV" # CHANGED: Updated to match weather file column name
+   λ_EOM_cap: 2   # Price cap (M€/GWh) - high technical limit
+   D_cap_ratio: 0.75  # Can reduce to 75% of reference demand (25% reduction) - moderate elasticity
+   
+  LV_HIGH: 
+   display_name: "LV High"
+   Share: 0.30  # Share of consumers in overall consumer mix
+   #PV_cap: 0.0000010 # GWp (5 kWp)
+   PV_cap: 0
+   D: "LV_HIGH" # Timeseries that needs to be picked up
+   PV_AF: "PV" # CHANGED: Updated to match weather file column name
+   λ_EOM_cap: 1.2    # Price cap (M€/GWh) - high technical limit
+   D_cap_ratio: 0.75  # Can reduce to 80% of reference demand (20% reduction) - less elastic
+   
+  MV_LOAD: 
+   display_name: "MV Industrial"
+   Share: 0.10  # Share of consumers in overall consumer mix
+   PV_cap: 0.000015 # GWp (20 kWp)
+   #PV_cap: 0
+   D: "MV_LOAD" # Timeseries that needs to be picked up
+   PV_AF: "PV" # CHANGED: Updated to match weather file column name
+   λ_EOM_cap: 1   # Price cap (M€/GWh) - high technical limit
+   D_cap_ratio: 0.75  # Can reduce to 85% of reference demand (15% reduction) - least elastic, industrial
+  
+RiskMetrics:
+  β_gc: 1 #Confidence level for CVAR - focus on worst 20% of scenarios
+  γ_gc: 0.5 # Weight between expected value and CV@R - more weight on risk (was 0.8)
+  β_co: 1 #Confidence level for CVAR - focus on worst 20% of scenarios  
+  γ_co: 0.5 # Weight between expected value and CV@R - more weight on risk
+
+Generators:
+  # OPEX are parametrized as a/2 x g^2 + b x g 
+  Baseload: # CCGT
+    a: 0.0025  # (M€/GWh)^2 → moderate non-linearity at high load (thermal efficiency decline)
+    #a: 0.00004
+    #a: 0.00
+    b: 0.075   # M€/GWh (80 €/MWh) - variable cost incl. gas at ~30 €/MWh_th and  80 €/t CO₂ cost
+    INV: 2750.0 # M€/GW
+    #INV: 0
+    n: 35
+    F_cm: 1
+    # Notes: Modern H-class plants in Greece with ~58–61% efficiency
+
+  MidMerit: # OCGT
+    a: 0.002  # higher non-linearity due to inefficiency at ramp
+    #a: 0.0001  # higher non-linearity due to inefficiency at ramp
+    #a: 0.00
+    b: 0.1   # M€/GWh (88 €/MWh) - gas use + CO₂ cost, ~40% efficiency and 80 €/t CO₂ cost
+    INV: 1250 # M€/GW (1,250,000 €/MW)
+    n: 20
+    F_cm: 1
+    # Notes: Simple cycle, older peaker plants in PPC portfolio
+
+  Peak: # Reservoir Hydro or Pumped Hydro Peaker (price-driven)
+    #a: 0.02   # increase quadratic term to reflect ramping/startup penalties
+    a: 0.002   # increase quadratic term to reflect ramping/startup penalties
+    #a: 0.00
+    b: 0.15 # M€/GWh (120 €/MWh) - marginal cost includes water value + O&M
+    INV: 600 # M€/GW (500,000 €/MW)
+    #INV: 50
+    #INV: 0
+    n: 20
+    F_cm: 1
+    # Notes: Treated as fully dispatchable. CF determined endogenously
+
+  WindOnshore:
+    a: 0 # (M€/GWh)^2
+    b: 0 # M€/GWh (0 €/MWh) - Zero marginal cost
+    INV: 1500.0 # M€/GW (1,500,000 €/MW) - Onshore wind capital cost
+    AF: "WIND_ONSHORE" # References weather_timeseries_12d.csv
+    n: 20 # lifetime in years
+    F_cm: 0 # derating factor for capacity
+    C: 4.5 # Installed capacity constraint (GW)
+    # Notes: Marginal cost near zero; maintenance can be added as fixed cost
+
+  #WindOffshore:
+    #a: 0 # (M€/GWh)^2
+    #b: 0 # M€/GWh (0 €/MWh) - Zero marginal cost
+    #INV: 3000.0 # M€/GW (3,000,000 €/MW) - Offshore wind capital cost
+    #AF: "WIND_OFFSHORE" # References weather_timeseries_12d.csv
+    #n: 25 # lifetime in years
+    #F_cm: 0 # derating factor for capacity
+    #C: 1.0 # Installed capacity constraint (GW)
+    # Notes: High CAPEX, zero marginal cost, optional curtailment cost
+
+# Sources:
+# - IEA World Energy Outlook 2023
+# - Lazard LCOE v16.0 (2023)
+# - IRENA Renewable Power Generation Costs (2023)
+# - Schmidt et al. (2017) for technology learning curves
+# - NREL ATB and EU JRC reports for harmonized European data
+# elasticity of demand: -
+# - Labandeira et al. (2017): Meta-analysis showing residential short-term elasticity averaging -0.21
+# - Faruqui & Sergici (2013): Time-of-use pricing elasticities range from -0.1 to -0.4
+# - EPRI (2008): Commercial/industrial elasticities typically higher than residential
+# - Fan & Hyndman (2011): Price elasticity increases with price level and during peak periods
+  
+
+# Additional optimization ideas:
+# - Consider adding a script option to plot demand curves for each agent for visual inspection.
+# - Add a CSV export of the summary table for documentation and reproducibility.
+# - Allow the script to run a batch of scenarios with different elasticity bounds for sensitivity analysis.
+# - Add a check for negative net demand (grid export) and flag if it is persistent for any agent.
+# - Optionally, allow the user to specify a minimum/maximum allowed ENS as a percentage of total demand for each agent.
+# - Document the calibration process and results in a markdown or PDF report for transparency.
+  
